@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Presença Jiu-Jitsu Social</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Biblioteca de Leitura de QR Code -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <!-- Biblioteca de Geração de QR Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        .active-tab {
+            border-bottom: 4px solid #f59e0b;
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700 py-4 px-6 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-500 text-gray-950 p-2.5 rounded-lg font-black text-xl">
+                    <i class="fa-solid fa-user-ninja"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">Jiu-Jitsu Social</h1>
+                    <p class="text-xs text-amber-500 font-semibold tracking-wider uppercase">Controle de Presença</p>
+                </div>
+            </div>
+            <span class="text-xs bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full font-mono border border-gray-600">MVP Acadêmico</span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-4 md:p-6">
+        
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-gray-700 mb-6 overflow-x-auto">
+            <button onclick="switchTab('cadastro')" id="tab-cadastro" class="flex-1 py-3 px-4 text-center font-bold text-sm tracking-wide uppercase transition-all duration-200 active-tab flex items-center justify-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-user-plus"></i> Cadastrar Aluno
+            </button>
+            <button onclick="switchTab('scanner')" id="tab-scanner" class="flex-1 py-3 px-4 text-center font-bold text-sm tracking-wide uppercase transition-all duration-200 text-gray-400 hover:text-gray-200 flex items-center justify-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-qrcode"></i> Ler QR Code / Chamada
+            </button>
+            <button onclick="switchTab('relatorio')" id="tab-relatorio" class="flex-1 py-3 px-4 text-center font-bold text-sm tracking-wide uppercase transition-all duration-200 text-gray-400 hover:text-gray-200 flex items-center justify-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-list-check"></i> Lista & Presenças
+            </button>
+        </div>
+
+        <!-- TAB 1: CADASTRO -->
+        <div id="content-cadastro" class="tab-content block">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Formulário de Cadastro -->
+                <div class="lg:col-span-1 bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl h-fit">
+                    <h3 class="text-xl font-bold mb-4 text-amber-500 flex items-center gap-2">
+                        <i class="fa-solid fa-user-pen"></i> Novo Aluno
+                    </h3>
+                    <form id="cadastroForm" onsubmit="cadastrarAluno(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Nome da Criança</label>
+                            <input type="text" id="nomeAluno" required placeholder="Ex: Pedro Silva" class="w-full bg-gray-900 border border-gray-700 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:border-amber-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Responsável / Telefone</label>
+                            <input type="text" id="telAluno" required placeholder="Ex: Maria (11) 99999-9999" class="w-full bg-gray-900 border border-gray-700 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:border-amber-500 transition-colors">
+                        </div>
+                        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold py-3 px-4 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10">
+                            <i class="fa-solid fa-user-plus"></i> Cadastrar e Gerar QR Code
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Lista de Carteirinhas Geradas -->
+                <div class="lg:col-span-2 bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl">
+                    <h3 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                        <i class="fa-solid fa-address-card"></i> Carteirinhas para Impressão
+                    </h3>
+                    <div id="carteirinhasContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[460px] overflow-y-auto pr-2">
+                        <!-- Gerado dinamicamente -->
+                        <div class="col-span-full text-center text-gray-500 py-12">
+                            <i class="fa-regular fa-folder-open text-4xl mb-3 block"></i>
+                            Nenhum aluno cadastrado no sistema ainda.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: SCANNER -->
+        <div id="content-scanner" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Leitor de Câmera -->
+                <div class="lg:col-span-2 bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl flex flex-col items-center">
+                    <h3 class="text-xl font-bold mb-4 text-amber-500 self-start flex items-center gap-2">
+                        <i class="fa-solid fa-camera"></i> Escanear Presença
+                    </h3>
+                    
+                    <div id="reader" class="w-full max-w-md bg-gray-950 rounded-xl overflow-hidden border border-gray-700 aspect-square mb-4"></div>
+                    
+                    <div class="flex gap-3 w-full max-w-md">
+                        <button onclick="iniciarLeitor()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-play"></i> Ligar Câmera
+                        </button>
+                        <button onclick="pararLeitor()" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-stop"></i> Desligar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Feedback Instantâneo de Entrada -->
+                <div class="lg:col-span-1 bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl flex flex-col h-full">
+                    <h3 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                        <i class="fa-solid fa-bell"></i> Última Entrada
+                    </h3>
+                    <div id="scannerFeedback" class="flex-1 flex flex-col items-center justify-center text-center p-6 bg-gray-900 rounded-xl border border-gray-700 border-dashed min-h-[250px]">
+                        <i class="fa-solid fa-qrcode text-5xl text-gray-600 mb-4 animate-pulse"></i>
+                        <p class="text-gray-400 font-medium">Aguardando leitura do QR Code do aluno...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: RELATÓRIOS -->
+        <div id="content-relatorio" class="tab-content hidden">
+            <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-users"></i> Gestão de Alunos & Histórico de Treino
+                    </h3>
+                    <button onclick="limparDados()" class="bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800 text-xs font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-trash-can"></i> Limpar Todo o Sistema
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-gray-700 text-gray-400 text-xs font-bold uppercase tracking-wider">
+                                <th class="pb-3 pl-4">ID</th>
+                                <th class="pb-3">Nome do Aluno</th>
+                                <th class="pb-3">Responsável</th>
+                                <th class="pb-3 text-center">Frequência Total</th>
+                                <th class="pb-3">Última Presença</th>
+                                <th class="pb-3 pr-4 text-right">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaAlunos" class="divide-y divide-gray-700/50">
+                            <!-- Inserido dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="mt-12 text-center text-xs text-gray-500 pb-8">
+        <p>Projeto de Extensão Universitária • Análise e Desenvolvimento de Sistemas</p>
+    </footer>
+
+    <!-- LOGICA DO SISTEMA -->
+    <script>
+        let html5QrcodeScanner = null;
+
+        // Ao carregar a página, renderiza os alunos salvos no LocalStorage
+        document.addEventListener("DOMContentLoaded", () => {
+            renderizarAlunos();
+        });
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('block'));
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            document.getElementById(`content-${tabName}`).classList.add('block');
+
+            document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('active-tab', 'text-amber-500');
+                btn.classList.add('text-gray-400');
+            });
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.classList.add('active-tab');
+            activeBtn.classList.remove('text-gray-400');
+
+            // Para o leitor caso o usuário saia da aba de escaneamento
+            if (tabName !== 'scanner') {
+                pararLeitor();
+            }
+        }
+
+        // Recuperar Alunos do LocalStorage
+        function obterAlunos() {
+            const alunos = localStorage.getItem("alunos_jiujitsu");
+            return alunos ? JSON.parse(alunos) : [];
+        }
+
+        // Salvar Alunos no LocalStorage
+        function salvarAlunos(alunos) {
+            localStorage.setItem("alunos_jiujitsu", JSON.stringify(alunos));
+        }
+
+        // Cadastrar Novo Aluno
+        function cadastrarAluno(e) {
+            e.preventDefault();
+            const nome = document.getElementById("nomeAluno").value.trim();
+            const tel = document.getElementById("telAluno").value.trim();
+            if (!nome || !tel) return;
+
+            const alunos = obterAlunos();
+            const novoAluno = {
+                id: "JJ-" + Math.floor(100000 + Math.random() * 900000), // ID Único de Matrícula
+                nome: nome,
+                responsavel: tel,
+                presencas: [],
+                cadastroData: new Date().toLocaleDateString('pt-BR')
+            };
+
+            alunos.push(novoAluno);
+            salvarAlunos(alunos);
+
+            document.getElementById("cadastroForm").reset();
+            renderizarAlunos();
+            alert(`Aluno ${nome} cadastrado com sucesso!`);
+        }
+
+        // Renderizar Lista na tela
+        function renderizarAlunos() {
+            const alunos = obterAlunos();
+            const carteirinhasContainer = document.getElementById("carteirinhasContainer");
+            const tabelaAlunos = document.getElementById("tabelaAlunos");
+
+            carteirinhasContainer.innerHTML = "";
+            tabelaAlunos.innerHTML = "";
+
+            if (alunos.length === 0) {
+                carteirinhasContainer.innerHTML = `
+                    <div class="col-span-full text-center text-gray-500 py-12">
+                        <i class="fa-regular fa-folder-open text-4xl mb-3 block"></i>
+                        Nenhum aluno cadastrado no sistema ainda.
+                    </div>`;
+                tabelaAlunos.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-8 text-gray-500">Nenhum dado cadastrado para exibição.</td>
+                    </tr>`;
+                return;
+            }
+
+            alunos.forEach(aluno => {
+                // Criar elemento de carteirinha imprimível com QR Code
+                const cardId = `qr-${aluno.id}`;
+                const card = document.createElement("div");
+                card.className = "bg-gray-900 border border-gray-700 rounded-xl p-4 flex gap-4 items-center shadow-md relative overflow-hidden";
+                card.innerHTML = `
+                    <div class="bg-white p-1 rounded-lg">
+                        <div id="${cardId}" class="w-24 h-24"></div>
+                    </div>
+                    <div class="flex-1">
+                        <span class="text-[10px] font-bold text-amber-500 tracking-widest uppercase block mb-1">PROJETO SOCIAL JIU-JITSU</span>
+                        <h4 class="font-bold text-white text-base truncate max-w-[170px]">${aluno.nome}</h4>
+                        <p class="text-xs text-gray-400 mt-1">Contato: ${aluno.responsavel}</p>
+                        <p class="text-xs font-mono text-gray-500 mt-0.5">Matrícula: ${aluno.id}</p>
+                    </div>
+                `;
+                carteirinhasContainer.appendChild(card);
+
+                // Gerar QR Code para a carteirinha usando a biblioteca QRCodeJS
+                new QRCode(document.getElementById(cardId), {
+                    text: aluno.id,
+                    width: 96,
+                    height: 96,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+
+                // Criar Linha na tabela de relatórios
+                const ultimaPresenca = aluno.presencas.length > 0 
+                    ? aluno.presencas[aluno.presencas.length - 1] 
+                    : "Sem registros";
+
+                const tr = document.createElement("tr");
+                tr.className = "border-b border-gray-800 hover:bg-gray-800/30 transition-colors";
+                tr.innerHTML = `
+                    <td class="py-3.5 pl-4 font-mono text-xs text-amber-500 font-bold">${aluno.id}</td>
+                    <td class="py-3.5 font-bold text-white">${aluno.nome}</td>
+                    <td class="py-3.5 text-gray-400 text-sm">${aluno.responsavel}</td>
+                    <td class="py-3.5 text-center">
+                        <span class="bg-amber-500/10 text-amber-400 font-bold text-xs px-2.5 py-1 rounded-full border border-amber-500/20">
+                            ${aluno.presencas.length} treinos
+                        </span>
+                    </td>
+                    <td class="py-3.5 text-gray-400 text-sm font-mono">${ultimaPresenca}</td>
+                    <td class="py-3.5 pr-4 text-right">
+                        <button onclick="deletarAluno('${aluno.id}')" class="text-gray-500 hover:text-rose-500 p-1.5 rounded transition-colors" title="Remover Aluno">
+                            <i class="fa-solid fa-user-minus text-sm"></i>
+                        </button>
+                    </td>
+                `;
+                tabelaAlunos.appendChild(tr);
+            });
+        }
+
+        // Deletar Aluno Unitário
+        function deletarAluno(id) {
+            if (!confirm("Tem certeza de que deseja remover este aluno?")) return;
+            let alunos = obterAlunos();
+            alunos = alunos.filter(a => a.id !== id);
+            salvarAlunos(alunos);
+            renderizarAlunos();
+        }
+
+        // Iniciar Módulo da Câmera
+        function iniciarLeitor() {
+            const scannerFeedback = document.getElementById("scannerFeedback");
+            
+            // Impede múltiplos scanners abertos ao mesmo tempo
+            if (html5QrcodeScanner) {
+                pararLeitor();
+            }
+
+            html5QrcodeScanner = new Html5Qrcode("reader");
+            
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            html5QrcodeScanner.start(
+                { facingMode: "environment" }, // Prioriza a câmera traseira no celular
+                config,
+                onScanSuccess,
+                onScanFailure
+            ).catch(err => {
+                scannerFeedback.innerHTML = `
+                    <i class="fa-solid fa-triangle-exclamation text-4xl text-rose-500 mb-3"></i>
+                    <p class="text-rose-400 font-bold">Erro de Câmera</p>
+                    <p class="text-xs text-gray-500 max-w-xs mt-1">Não conseguimos acessar sua webcam ou câmera traseira. Certifique-se de dar permissão ao navegador.</p>
+                `;
+            });
+        }
+
+        // Parar Câmera
+        function pararLeitor() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop().then(() => {
+                    html5QrcodeScanner = null;
+                }).catch(err => console.error("Erro ao desligar câmera", err));
+            }
+        }
+
+        // Ao escanear o QR Code com sucesso
+        function onScanSuccess(decodedText, decodedResult) {
+            const alunos = obterAlunos();
+            const alunoIndex = alunos.findIndex(a => a.id === decodedText);
+            const feedbackContainer = document.getElementById("scannerFeedback");
+
+            if (alunoIndex !== -1) {
+                const agora = new Date();
+                const dataHoraFormatada = `${agora.toLocaleDateString('pt-BR')} ${agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+                
+                // Evitar presenças repetidas consecutivas em menos de 10 minutos (opcional para simulação)
+                alunos[alunoIndex].presencas.push(dataHoraFormatada);
+                salvarAlunos(alunos);
+                renderizarAlunos();
+
+                // Tocar feedback sonoro simulado (Web Audio API nativa para não depender de arquivos de terceiros)
+                tocarSomSucesso();
+
+                feedbackContainer.innerHTML = `
+                    <div class="animate-bounce bg-emerald-500/10 text-emerald-400 p-4 rounded-full border border-emerald-500/30 mb-4">
+                        <i class="fa-solid fa-check text-4xl"></i>
+                    </div>
+                    <h4 class="text-xl font-bold text-emerald-400">Presença Confirmada!</h4>
+                    <p class="text-white font-bold text-lg mt-2">${alunos[alunoIndex].nome}</p>
+                    <p class="text-xs text-gray-400 mt-1">${dataHoraFormatada}</p>
+                    <p class="text-xs text-amber-500 font-mono mt-2">Frequência: ${alunos[alunoIndex].presencas.length}º treino</p>
+                `;
+            } else {
+                tocarSomErro();
+                feedbackContainer.innerHTML = `
+                    <div class="bg-rose-500/10 text-rose-500 p-4 rounded-full border border-rose-500/30 mb-4">
+                        <i class="fa-solid fa-xmark text-4xl"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-rose-500">QR Code Inválido</h4>
+                    <p class="text-gray-400 text-xs mt-1">Este QR Code (${decodedText}) não está associado a nenhuma criança cadastrada.</p>
+                `;
+            }
+        }
+
+        function onScanFailure(error) {
+            // Callback silencioso para não poluir o console a cada varredura de frame sem QR Code
+        }
+
+        // Sintetizador de áudio simples para efeitos de feedback (Beep de sucesso e erro)
+        function tocarSomSucesso() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(880, ctx.currentTime); // Mi agudo
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.15);
+            } catch(e) {}
+        }
+
+        function tocarSomErro() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "sawtooth";
+                osc.frequency.setValueAtTime(220, ctx.currentTime); // Grave / Ruído
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch(e) {}
+        }
+
+        // Limpar Base de Dados
+        function limparDados() {
+            if (confirm("ATENÇÃO: Isso removerá TODOS os alunos e histórico de presenças salvos localmente. Deseja continuar?")) {
+                localStorage.removeItem("alunos_jiujitsu");
+                renderizarAlunos();
+            }
+        }
+    </script>
+</body>
+</html>
